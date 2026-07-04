@@ -119,10 +119,27 @@ full = [
   "wda",
   "xpc",
 ]
-default = ["full", "aws-lc"]
+# default = ["full", "aws-lc"]
+default = [
+  "afc",
+  "debug_proxy",
+  "installation_proxy",
+  "misagent",
+  "usbmuxd",
+  "rsd",
+  "tcp",
+  "core_device",
+  "core_device_proxy",
+  "xpc",
+  "tunnel_tcp_stack",
+  "dvt",
+  "remote_pairing",
+  "aws-lc"
+]
 
 [build-dependencies]
 cbindgen = "0.29.0"
 
 [lib]
-crate-type = ["staticlib", "cdylib", "rlib"]
+#crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["staticlib"]

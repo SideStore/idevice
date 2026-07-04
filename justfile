@@ -37,21 +37,22 @@ xcframework: apple-build
   rm -rf swift/libs
   cp ffi/idevice.h swift/include/idevice.h
   mkdir swift/libs
-  lipo -create -output swift/libs/idevice-ios-sim.a \
-    target/aarch64-apple-ios-sim/release/libidevice_ffi.a \
-    target/x86_64-apple-ios/release/libidevice_ffi.a
-  lipo -create -output swift/libs/idevice-maccatalyst.a \
-    target/aarch64-apple-ios-macabi/release/libidevice_ffi.a \
-    target/x86_64-apple-ios-macabi/release/libidevice_ffi.a
-  lipo -create -output swift/libs/idevice-macos.a \
-    target/aarch64-apple-darwin/release/libidevice_ffi.a \
-    target/x86_64-apple-darwin/release/libidevice_ffi.a
+  # lipo -create -output swift/libs/idevice-ios-sim.a \
+  #   target/aarch64-apple-ios-sim/release/libidevice_ffi.a \
+  #   target/x86_64-apple-ios/release/libidevice_ffi.a
+  cp target/aarch64-apple-ios-sim/release/libidevice_ffi.a swift/libs/idevice-ios-sim.a
+  # lipo -create -output swift/libs/idevice-maccatalyst.a \
+  #   target/aarch64-apple-ios-macabi/release/libidevice_ffi.a \
+  #   target/x86_64-apple-ios-macabi/release/libidevice_ffi.a
+  # lipo -create -output swift/libs/idevice-macos.a \
+  #   target/aarch64-apple-darwin/release/libidevice_ffi.a \
+  #   target/x86_64-apple-darwin/release/libidevice_ffi.a
+  cp target/aarch64-apple-darwin/release/libidevice_ffi.a swift/libs/idevice-macos.a
 
   xcodebuild -create-xcframework \
     -library target/aarch64-apple-ios/release/libidevice_ffi.a -headers swift/include \
     -library swift/libs/idevice-ios-sim.a -headers swift/include \
     -library swift/libs/idevice-macos.a -headers swift/include \
-    -library swift/libs/idevice-maccatalyst.a -headers swift/include \
     -output swift/IDevice.xcframework
 
   zip -r swift/bundle.zip swift/IDevice.xcframework
@@ -69,19 +70,19 @@ apple-build: # requires a Mac
     cargo build --release --target aarch64-apple-ios-sim
 
   # iOS Simulator (x86_64)
-  BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk iphonesimulator --show-sdk-path)" \
-    cargo build --release --target x86_64-apple-ios
+  # BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk iphonesimulator --show-sdk-path)" \
+  #   cargo build --release --target x86_64-apple-ios
 
   # Mac Catalyst (arm64)
   # AWS-LC has an a hard time compiling for an iOS with macabi target, so we switch to ring.
-  BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk macosx --show-sdk-path)" \
-    cargo build --release --target aarch64-apple-ios-macabi --no-default-features --features "ring full"
+  # BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk macosx --show-sdk-path)" \
+  #   cargo build --release --target aarch64-apple-ios-macabi --no-default-features --features "ring full"
 
   # Mac Catalyst (x86_64)
   # AWS-LC has an a hard time compiling for an iOS with macabi target, so we switch to ring.
-  BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk macosx --show-sdk-path)" \
-    cargo build --release --target x86_64-apple-ios-macabi --no-default-features --features "ring full"
+  # BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk macosx --show-sdk-path)" \
+  #   cargo build --release --target x86_64-apple-ios-macabi --no-default-features --features "ring full"
 
   # macOS (native) – no special env needed
   cargo build --release --target aarch64-apple-darwin
-  cargo build --release --target x86_64-apple-darwin
+  # cargo build --release --target x86_64-apple-darwin
