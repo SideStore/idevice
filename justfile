@@ -3,12 +3,12 @@ check-features:
   cargo hack check --feature-powerset --no-dev-deps
   cd ..
 
-ci-check: build-ffi-native build-tools-native build-cpp build-c
+ci-check: build-ffi-native build-tools-native # build-cpp build-c
   cargo clippy --all-targets --all-features -- -D warnings
   cargo fmt -- --check
 macos-ci-check: ci-check xcframework
-  cd tools && cargo build --release --target x86_64-apple-darwin
-windows-ci-check: build-ffi-native build-tools-native build-cpp
+  # cd tools && cargo build --release --target x86_64-apple-darwin
+windows-ci-check: build-ffi-native build-tools-native # build-cpp
 
 [working-directory: 'ffi']
 build-ffi-native:

@@ -134,7 +134,8 @@ default = [
   "tunnel_tcp_stack",
   "dvt",
   "remote_pairing",
-  "aws-lc"
+  "aws-lc",
+  "springboardservices"
 ]
 
 [build-dependencies]

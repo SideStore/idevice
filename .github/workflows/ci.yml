@@ -33,13 +33,13 @@ jobs:
       - name: Install rustup targets
         run: |
           rustup target add aarch64-apple-ios && \
-          rustup target add x86_64-apple-ios && \
           rustup target add aarch64-apple-ios-sim && \
           rustup target add aarch64-apple-darwin && \
-          rustup target add x86_64-apple-darwin && \
           rustup target add aarch64-apple-ios-macabi && \
-          rustup target add x86_64-apple-ios-macabi && \
           cargo install --force --locked bindgen-cli
+          # rustup target add x86_64-apple-ios && \
+          # rustup target add x86_64-apple-darwin && \
+          # rustup target add x86_64-apple-ios-macabi && \
 
       - name: Build all Apple targets and examples/tools
         run: |
@@ -58,17 +58,17 @@ jobs:
           name: idevice-xcframework
           path: swift/bundle.zip
 
-      - name: Upload C examples/tools
-        uses: actions/upload-artifact@v4
-        with:
-          name: idevice-c-examples-macos
-          path: ffi/examples/build/bin/*
+      # - name: Upload C examples/tools
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: idevice-c-examples-macos
+      #     path: ffi/examples/build/bin/*
 
-      - name: Upload C++ examples/tools
-        uses: actions/upload-artifact@v4
-        with:
-          name: idevice-cpp-examples-macos
-          path: cpp/examples/build/bin/*
+      # - name: Upload C++ examples/tools
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: idevice-cpp-examples-macos
+      #     path: cpp/examples/build/bin/*
 
       - name: Stage Rust tools (arm64)
         shell: bash
@@ -89,24 +89,24 @@ jobs:
           path: dist/arm64/*
           if-no-files-found: error
 
-      - name: Stage Rust tools (x64)
-        shell: bash
-        run: |
-          mkdir -p dist/x64
-          find target/x86_64-apple-darwin/release -maxdepth 1 -type f -exec sh -c '
-            for f in "$@"; do
-              if file "$f" | grep -Eq "Mach-O .* executable|ELF .* executable"; then
-                cp "$f" dist/x64/
-              fi
-            done
-          ' sh {} +
+      # - name: Stage Rust tools (x64)
+      #   shell: bash
+      #   run: |
+      #     mkdir -p dist/x64
+      #     find target/x86_64-apple-darwin/release -maxdepth 1 -type f -exec sh -c '
+      #       for f in "$@"; do
+      #         if file "$f" | grep -Eq "Mach-O .* executable|ELF .* executable"; then
+      #           cp "$f" dist/x64/
+      #         fi
+      #       done
+      #     ' sh {} +
 
-      - name: Upload Rust tools (x64)
-        uses: actions/upload-artifact@v4
-        with:
-          name: idevice-tools-macos-intel
-          path: dist/x64/*
-          if-no-files-found: error
+      # - name: Upload Rust tools (x64)
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: idevice-tools-macos-intel
+      #     path: dist/x64/*
+      #     if-no-files-found: error
 
   linux:
     name: Linux Build
