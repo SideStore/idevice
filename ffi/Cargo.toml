@@ -135,7 +135,9 @@ default = [
   "dvt",
   "remote_pairing",
   "aws-lc",
-  "springboardservices"
+  "springboardservices",
+  "heartbeat",
+  "mobile_image_mounter"
 ]
 
 [build-dependencies]
