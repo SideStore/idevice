@@ -278,9 +278,9 @@ jobs:
             if [[ "${trimmed}" == "[build]"* ]]; then
               git fetch --tags --unshallow || git fetch --tags || true
               last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
-              # echo "RELEASE_TAG=${last_tag}-ss-commit" >> $GITHUB_ENV
+              base_tag="${last_tag%%-ss-*}"
               short_sha=$(git rev-parse --short HEAD)
-              echo "RELEASE_TAG=${last_tag}-ss-${short_sha}" >> $GITHUB_ENV
+              echo "RELEASE_TAG=${base_tag}-ss-${short_sha}" >> $GITHUB_ENV
               echo "should_release=true" >> $GITHUB_OUTPUT
             else
               echo "Commit message does not start with [build]. Skipping release."
