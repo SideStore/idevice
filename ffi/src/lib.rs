@@ -449,6 +449,32 @@ pub unsafe extern "C" fn idevice_stream_free(stream_handle: *mut ReadWriteOpaque
     }
 }
 
+/// Extracts the underlying stream from an Idevice connection and wraps it in a ReadWriteOpaque stream.
+/// This consumes the IdeviceHandle.
+///
+/// # Safety
+/// `idevice` must be a valid pointer to an IdeviceHandle allocated by this library (consumed).
+/// `stream` must be a valid pointer to a location where the stream handle will be stored.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn idevice_to_stream(
+    idevice: *mut IdeviceHandle,
+    stream: *mut *mut ReadWriteOpaque,
+) -> *mut IdeviceFfiError {
+    if idevice.is_null() || stream.is_null() {
+        return ffi_err!(IdeviceError::FfiInvalidArg);
+    }
+    let idevice_box = unsafe { Box::from_raw(idevice) };
+    if let Some(socket) = idevice_box.0.get_socket() {
+        let boxed = Box::new(ReadWriteOpaque {
+            inner: Some(socket),
+        });
+        unsafe { *stream = Box::into_raw(boxed) };
+        null_mut()
+    } else {
+        ffi_err!(IdeviceError::FfiInvalidArg)
+    }
+}
+
 /// Frees a string allocated by this library
 ///
 /// # Arguments
