@@ -137,7 +137,8 @@ default = [
   "aws-lc",
   "springboardservices",
   "heartbeat",
-  "mobile_image_mounter"
+  "mobile_image_mounter",
+  "tss"
 ]
 
 [build-dependencies]
