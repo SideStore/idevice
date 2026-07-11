@@ -138,7 +138,8 @@ default = [
   "springboardservices",
   "heartbeat",
   "mobile_image_mounter",
-  "tss"
+  "tss",
+  "house_arrest"
 ]
 
 [build-dependencies]
