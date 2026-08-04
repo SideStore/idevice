@@ -2,7 +2,7 @@
 name = "idevice-tools"
 description = "Rust binary tools to interact with services on iOS devices."
 authors = ["Jackson Coxson"]
-version = "0.1.63"
+version = "0.1.65"
 edition = "2024"
 license = "MIT"
 documentation = "https://docs.rs/idevice"
@@ -50,7 +50,6 @@ tracing = { version = "0.1.41" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # tun-rs = { version = "1.5", features = ["async"] }
 sha2 = { version = "0.10" }
-ureq = { version = "3" }
 clap = { version = "4.5", features = ["derive"] }
 jkcli = { version = "0.1.1" }
 plist = { version = "1.7" }
@@ -59,6 +58,7 @@ ns-keyed-archive = "0.1.5"
 uuid = "1.16"
 futures-util = { version = "0.3" }
 mdns-sd = { version = "0.19" }
+nusb = { version = "0.2.4", features = ["tokio"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -67,4 +67,5 @@ libc = "0.2"
 default = ["aws-lc"]
 aws-lc = ["idevice/aws-lc"]
 ring = ["idevice/ring"]
+rustcrypto = ["idevice/rustcrypto"]
 openssl = ["idevice/openssl"]

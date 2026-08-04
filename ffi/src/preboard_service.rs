@@ -3,16 +3,29 @@
 use std::ptr::null_mut;
 
 use idevice::{
-    IdeviceError, IdeviceService, RsdService, preboard_service::PreboardServiceClient,
+    IdeviceError, IdeviceService,
+    preboard_service::{PreboardServiceClient, StashbagOutcome},
     provider::IdeviceProvider,
 };
 
 use crate::{
-    IdeviceFfiError, IdeviceHandle, core_device_proxy::AdapterHandle, ffi_err,
-    provider::IdeviceProviderHandle, rsd::RsdHandshakeHandle, run_sync_local,
+    IdeviceFfiError, IdeviceHandle, ffi_err, provider::IdeviceProviderHandle, run_sync_local,
 };
+#[cfg(all(feature = "core_device_proxy", feature = "rsd"))]
+use crate::{core_device_proxy::AdapterHandle, rsd::RsdHandshakeHandle};
+#[cfg(all(feature = "core_device_proxy", feature = "rsd"))]
+use idevice::RsdService as _;
 
 pub struct PreboardServiceClientHandle(pub PreboardServiceClient);
+
+/// The outcome of a `CreateStashbag` request.
+#[repr(C)]
+pub enum IdeviceStashbagOutcome {
+    /// The device does not need a stashbag; nothing further to do.
+    NotRequired = 0,
+    /// A stashbag was created and must be committed with the AP ticket.
+    CommitRequired = 1,
+}
 
 /// Automatically creates and connects to Preboard Service, returning a client handle
 ///
@@ -67,6 +80,7 @@ pub unsafe extern "C" fn preboard_service_connect(
 /// `provider` must be a valid pointer to a handle allocated by this library
 /// `handshake` must be a valid pointer to a handle allocated by this library
 /// `client` must be a valid, non-null pointer to a location where the handle will be stored
+#[cfg(all(feature = "core_device_proxy", feature = "rsd"))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn preboard_service_connect_rsd(
     provider: *mut AdapterHandle,
@@ -120,12 +134,14 @@ pub unsafe extern "C" fn preboard_service_new(
     null_mut()
 }
 
-/// Creates a stashbag on the device
+/// Creates a stashbag on the device from a local preboard manifest (will prompt
+/// for the passcode on the device), writing the outcome to `out_outcome`
 ///
 /// # Arguments
 /// * `client` - A valid PreboardServiceClient handle
 /// * `manifest` - Pointer to the manifest data
 /// * `manifest_len` - Length of the manifest data
+/// * `out_outcome` - On success, set to whether a commit is required
 ///
 /// # Returns
 /// An IdeviceFfiError on error, null on success
@@ -133,22 +149,32 @@ pub unsafe extern "C" fn preboard_service_new(
 /// # Safety
 /// `client` must be a valid pointer to a handle allocated by this library
 /// `manifest` must be a valid pointer to `manifest_len` bytes of data
+/// `out_outcome` must be a valid, non-null pointer
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn preboard_service_create_stashbag(
     client: *mut PreboardServiceClientHandle,
     manifest: *const u8,
     manifest_len: usize,
+    out_outcome: *mut IdeviceStashbagOutcome,
 ) -> *mut IdeviceFfiError {
-    if client.is_null() || manifest.is_null() {
+    if client.is_null() || manifest.is_null() || out_outcome.is_null() {
         return ffi_err!(IdeviceError::FfiInvalidArg);
     }
     let manifest = unsafe { std::slice::from_raw_parts(manifest, manifest_len) };
-    let res: Result<(), IdeviceError> = run_sync_local(async move {
+    let res: Result<StashbagOutcome, IdeviceError> = run_sync_local(async move {
         let client_ref = unsafe { &mut (*client).0 };
         client_ref.create_stashbag(manifest).await
     });
     match res {
-        Ok(_) => null_mut(),
+        Ok(outcome) => {
+            unsafe {
+                *out_outcome = match outcome {
+                    StashbagOutcome::NotRequired => IdeviceStashbagOutcome::NotRequired,
+                    StashbagOutcome::CommitRequired => IdeviceStashbagOutcome::CommitRequired,
+                }
+            };
+            null_mut()
+        }
         Err(e) => ffi_err!(e),
     }
 }

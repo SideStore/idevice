@@ -2,7 +2,7 @@
 name = "idevice"
 description = "A Rust library to interact with services on iOS devices."
 authors = ["Jackson Coxson"]
-version = "0.1.64"
+version = "0.1.65"
 edition = "2024"
 license = "MIT"
 documentation = "https://docs.rs/idevice"
@@ -39,9 +39,7 @@ chrono = { version = "0.4", optional = true, default-features = false, features 
 serde_json = { version = "1", optional = true }
 bytes = { version = "1.10", optional = true }
 
-reqwest = { version = "0.13", features = [
-  "json",
-], optional = true, default-features = false }
+webpki-roots = { version = "1", optional = true }
 futures = { version = "0.3", optional = true }
 async-stream = { version = "0.3.6", optional = true }
 
@@ -69,6 +67,10 @@ obfstr = { version = "0.4", optional = true }
 async_zip = { version = "0.0.18", optional = true }
 flate2 = { version = "1", optional = true }
 
+der = { version = "0.7", optional = true, features = ["alloc", "derive"] }
+
+rustls-rustcrypto = { version = "0.0.2-alpha", optional = true }
+
 # Drop-in for `std::time::SystemTime` that's a zero-cost alias on native and
 # uses `Date.now()` on wasm32-unknown-unknown (where `SystemTime::now()` panics).
 web-time = { version = "1", optional = true }
@@ -82,8 +84,9 @@ libc = "0.2"
 tokio = { version = "1", features = ["fs"] }
 
 # wasm32-unknown-unknown: forward `js` / `wasm_js` features through to the
-# transitive `getrandom` crates so Web Crypto is used for randomness, and
-# pull in a pure-Rust rustls `CryptoProvider` (`rustls-rustcrypto`).
+# transitive `getrandom` crates so Web Crypto is used for randomness. The
+# pure-Rust crypto backend (`rustls-rustcrypto`) is a target-independent
+# dependency selected by the `rustcrypto` feature.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 uuid = { version = "1.23", default-features = false, features = [
   "js",
@@ -94,7 +97,6 @@ getrandom_02 = { package = "getrandom", version = "0.2", default-features = fals
 getrandom_04 = { package = "getrandom", version = "0.4", default-features = false, features = [
   "wasm_js",
 ], optional = true }
-rustls-rustcrypto = { version = "0.0.2-alpha", optional = true }
 # Forwards the `web` feature so `rustls-pki-types::UnixTime::now()` uses `Date.now()`.
 rustls-pki-types = { version = "1", default-features = false, features = [
   "web",
@@ -123,11 +125,11 @@ openssl = ["dep:openssl", "dep:tokio-openssl"]
 # Internal features: gate error‐conversion impls so every feature that pulls
 # in the dep automatically gets `From<…> for IdeviceError`.
 _serde_json = ["dep:serde_json"]
-_reqwest = ["dep:reqwest"]
+_http = ["tokio/net", "dep:webpki-roots"]
 
 afc = ["dep:chrono", "dep:futures"]
 amfi = []
-bt_packet_logger = []
+bt_packet_logger = ["dep:futures", "dep:async-stream"]
 companion_proxy = []
 core_device = ["xpc", "dep:uuid", "dep:ns-keyed-archive"]
 core_device_proxy = ["_serde_json"]
@@ -141,7 +143,12 @@ display_stream = [
 crashreportcopymobile = ["afc"]
 debug_proxy = []
 diagnostics_relay = []
-dvt = ["dep:ns-keyed-archive"]
+dvt = [
+  "dep:ns-keyed-archive",
+  "tokio/sync",
+  "tokio/rt",
+  "tokio/macros",
+]
 energy_monitor = ["dvt"]
 graphics = ["dvt", "rsd"]
 device_info = ["dvt"]
@@ -157,7 +164,7 @@ installation_proxy = [
   "async_zip/tokio",
   "async_zip/deflate",
 ]
-installcoordination_proxy = []
+installcoordination_proxy = ["xpc"]
 xctest = [
   "dvt",
   "installation_proxy",
@@ -173,9 +180,9 @@ springboardservices = []
 mdns = ["dep:hkdf", "dep:hmac", "dep:sha2"]
 misagent = []
 mobile_image_mounter = ["dep:sha2"]
-mobileactivationd = ["_reqwest"]
+mobileactivationd = []
 mobilebackup2 = []
-wda = ["_serde_json", "tokio/time", "tokio/net"]
+wda = ["_serde_json", "tokio/time", "tokio/net", "tokio/rt"]
 notification_proxy = [
   "tokio/macros",
   "tokio/time",
@@ -194,9 +201,8 @@ pair = [
 pcapd = []
 preboard_service = []
 obfuscate = ["dep:obfstr"]
-# Pure-Rust rustls `CryptoProvider` for environments where ring/aws-lc-rs
-# can't be built (notably wasm32-unknown-unknown).
-wasm-crypto = ["rustls", "dep:rustls-rustcrypto"]
+rustcrypto = ["rustls", "dep:rustls-rustcrypto"]
+wasm-crypto = ["rustcrypto"]
 # Enables wasm32-unknown-unknown support: forwards Web Crypto features to
 # the transitive `getrandom` crates and selects `rustls-rustcrypto` as the
 # TLS crypto backend. Consumers must bring their own transport implementing
@@ -226,7 +232,22 @@ remote_pairing = [
   "dep:sha2",
   "dep:rsa",
 ]
-restore_service = []
+restore = [
+  "tss",
+  "dep:async_zip",
+  "async_zip/tokio",
+  "async_zip/deflate",
+  "dep:futures",
+  "dep:der",
+  "dep:sha2",
+  "dep:sha1",
+  "tokio/net",
+  "tokio/macros",
+  "tokio/rt",
+  "tokio/time",
+]
+restore_recovery = ["restore"]
+restore_service = ["xpc"]
 rsd = ["xpc"]
 screenshotr = []
 syslog_relay = ["dep:bytes", "dep:chrono"]
@@ -236,8 +257,8 @@ tunnel_tcp_stack = ["dep:jktcp"]
 # `tokio/fs`, which doesn't compile on wasm32, so it is opt-in rather than
 # implied by `tunnel_tcp_stack`.
 tunnel_tcp_stack_pcap = ["tunnel_tcp_stack", "jktcp/pcap"]
-tss = ["dep:uuid", "_reqwest"]
-tunneld = ["_serde_json", "_reqwest"]
+tss = ["dep:uuid", "_http"]
+tunneld = ["_serde_json", "_http"]
 usbmuxd = ["tokio/net", "dep:futures"]
 xpc = ["dep:indexmap", "dep:uuid", "dep:async-stream", "dep:futures"]
 full = [
@@ -276,6 +297,8 @@ full = [
   "pcapd",
   "preboard_service",
   "remote_pairing",
+  "restore",
+  "restore_recovery",
   "restore_service",
   "rsd",
   "screenshotr",
