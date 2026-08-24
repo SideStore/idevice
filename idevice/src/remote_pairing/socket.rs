@@ -68,6 +68,7 @@ impl<R: ReadWrite> RpPairingSocket<R> {
 
     async fn send_rppairing(&mut self, value: impl Serialize) -> Result<(), IdeviceError> {
         let value = serde_json::to_string(&value)?;
+        debug!("send_rppairing payload: {value}");
         let x = value.as_bytes();
 
         let mut frame = Vec::with_capacity(RPPAIRING_MAGIC.len() + 2 + x.len());
@@ -129,11 +130,8 @@ impl<R: ReadWrite> RpPairingSocketProvider for RpPairingSocket<R> {
             let mut value = vec![0u8; packet_len as usize];
             self.inner.read_exact(&mut value).await?;
 
-            debug!("recv_rppairing: {packet_len} json bytes");
-            trace!(
-                "recv_rppairing payload: {}",
-                String::from_utf8_lossy(&value)
-            );
+            let raw_str = String::from_utf8_lossy(&value);
+            debug!("recv_rppairing ({packet_len} bytes) payload: {raw_str}");
 
             let value: serde_json::Value = serde_json::from_slice(&value)?;
 

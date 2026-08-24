@@ -107,7 +107,11 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
     {
         self.attempt_pair_verify().await?;
 
-        if self.validate_pairing(pairing_file).await.is_err() {
+        if pairing_file.is_paired() {
+            if self.validate_pairing(pairing_file).await.is_err() {
+                self.pair(pairing_file, pin_callback).await?;
+            }
+        } else {
             self.pair(pairing_file, pin_callback).await?;
         }
         Ok(())
@@ -332,6 +336,7 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
 
         debug!("Waiting for attemptPairVerify response");
         let response = self.inner.recv_plain().await?;
+        debug!("attemptPairVerify raw response: {response:#?}");
 
         let response = response
             .as_dictionary()
@@ -365,6 +370,7 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
         let peer_device = peer_device::parse_peer_device_from_tlv(&tlv)?;
 
         pairing_file.alt_irk = Some(peer_device.alt_irk.clone());
+        pairing_file.generated_by = None;
         self.paired_peer_device = Some(peer_device);
 
         Ok(())
@@ -389,6 +395,7 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
             },
         ]);
         let tlv = R::serialize_bytes(&tlv);
+        debug!("request_pair_consent: sending setupManualPairing...");
         self.send_pairing_data(plist!({
             "data": tlv,
             "kind": "setupManualPairing",
@@ -397,7 +404,9 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
         }))
         .await?;
 
+        debug!("request_pair_consent: waiting for setupManualPairing response...");
         let response = self.inner.recv_plain().await?;
+        debug!("request_pair_consent raw response: {response:#?}");
         let response = match response
             .get_by("event")
             .and_then(|x| x.get_by("_0"))
@@ -871,6 +880,7 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
 
     async fn receive_pairing_data(&mut self) -> Result<plist::Value, IdeviceError> {
         let response = self.inner.recv_plain().await?;
+        debug!("receive_pairing_data raw response: {response:#?}");
 
         let response = match response.get_by("event").and_then(|x| x.get_by("_0")) {
             Some(r) => r,
