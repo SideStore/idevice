@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde_json::json;
 use std::{fmt::Debug, pin::Pin};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing::{debug, trace, warn};
+use tracing::{debug, warn};
 
 use crate::{
     IdeviceError, ReadWrite, RemoteXpcClient, remote_pairing::RPPAIRING_MAGIC, xpc::XPCObject,
