@@ -844,11 +844,10 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
         let response = self.send_receive_encrypted_request(request).await?;
         debug!("createListener response: {response:#?}");
 
-        let port = response
-            .get_by("createListener")
-            .or_else(|| response.get_by("_0").and_then(|x| x.get_by("createListener")))
-            .or_else(|| response.get_by("_1").and_then(|x| x.get_by("createListener")))
-            .and_then(|c| c.get_by("port").or_else(|| c.get_by("listenerPort")))
+        let listener = find_in_plist(&response, "createListener").unwrap_or(&response);
+
+        let port = find_in_plist(listener, "port")
+            .or_else(|| find_in_plist(listener, "listenerPort"))
             .and_then(|p| p.as_unsigned_integer())
             .ok_or(IdeviceError::UnexpectedResponse(
                 "missing port in createListener response".into(),
@@ -923,4 +922,18 @@ impl<R: RpPairingSocketProvider> std::fmt::Debug for RemotePairingClient<R> {
             .field("sending_host", &self.sending_host)
             .finish()
     }
+}
+
+fn find_in_plist<'a>(value: &'a plist::Value, target: &str) -> Option<&'a plist::Value> {
+    if let Some(dict) = value.as_dictionary() {
+        if let Some(v) = dict.get(target) {
+            return Some(v);
+        }
+        for (_, v) in dict.iter() {
+            if let Some(found) = find_in_plist(v, target) {
+                return Some(found);
+            }
+        }
+    }
+    None
 }
