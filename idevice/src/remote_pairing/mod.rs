@@ -846,7 +846,9 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
 
         let port = response
             .get_by("createListener")
-            .and_then(|c| c.get_by("port"))
+            .or_else(|| response.get_by("_0").and_then(|x| x.get_by("createListener")))
+            .or_else(|| response.get_by("_1").and_then(|x| x.get_by("createListener")))
+            .and_then(|c| c.get_by("port").or_else(|| c.get_by("listenerPort")))
             .and_then(|p| p.as_unsigned_integer())
             .ok_or(IdeviceError::UnexpectedResponse(
                 "missing port in createListener response".into(),

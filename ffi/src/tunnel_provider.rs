@@ -342,6 +342,52 @@ pub unsafe extern "C" fn tunnel_create_rppairing(
     }
 }
 
+/// Pairs with a device over the network via raw RPPairing protocol without creating a tunnel.
+///
+/// Updates `pairing_file` in place with the paired peer identity.
+///
+/// # Safety
+/// All pointer arguments must be valid and non-null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rppairing_pair_network(
+    addr: *const idevice_sockaddr,
+    addr_len: idevice_socklen_t,
+    hostname: *const c_char,
+    pairing_file: *mut RpPairingFileHandle,
+    pin_callback: Option<extern "C" fn(context: *mut c_void) -> *const c_char>,
+    pin_context: *mut c_void,
+) -> *mut IdeviceFfiError {
+    if addr.is_null() || hostname.is_null() || pairing_file.is_null() {
+        return ffi_err!(IdeviceError::FfiInvalidArg);
+    }
+
+    let socket_addr = match crate::util::c_socket_to_rust(addr as *const SockAddr, addr_len) {
+        Ok(a) => a,
+        Err(e) => return ffi_err!(e),
+    };
+    let host = match unsafe { CStr::from_ptr(hostname) }.to_str() {
+        Ok(s) => s.to_string(),
+        Err(_) => return ffi_err!(IdeviceError::FfiInvalidString),
+    };
+    let rpf = unsafe { &mut (*pairing_file).0 };
+    let ctx = PinCtx(pin_context);
+
+    let res = run_sync_local(async {
+        let stream = run_global_timeout(|| tokio::net::TcpStream::connect(socket_addr))
+            .await
+            .map_err(|e| IdeviceError::InternalError(format!("connect: {e}")))?;
+        let conn = RpPairingSocket::new(stream);
+
+        let mut rpc = RemotePairingClient::new(conn, &host);
+        rpc.connect(rpf, async || get_pin(pin_callback, &ctx)).await
+    });
+
+    match res {
+        Ok(()) => null_mut(),
+        Err(e) => ffi_err!(e),
+    }
+}
+
 fn get_pin(cb: Option<extern "C" fn(*mut c_void) -> *const c_char>, ctx: &PinCtx) -> String {
     if let Some(cb) = cb {
         let ptr = cb(ctx.0);
