@@ -44,6 +44,7 @@ xcframework: apple-build
   #   target/aarch64-apple-ios-sim/release/libidevice_ffi.a \
   #   target/x86_64-apple-ios/release/libidevice_ffi.a
   cp target/aarch64-apple-ios-sim/release/libidevice_ffi.a swift/libs/idevice-ios-sim.a
+  cp target/aarch64-apple-tvos-sim/release/libidevice_ffi.a swift/libs/idevice-tvos-sim.a
   # lipo -create -output swift/libs/idevice-maccatalyst.a \
   #   target/aarch64-apple-ios-macabi/release/libidevice_ffi.a \
   #   target/x86_64-apple-ios-macabi/release/libidevice_ffi.a
@@ -55,6 +56,8 @@ xcframework: apple-build
   xcodebuild -create-xcframework \
     -library target/aarch64-apple-ios/release/libidevice_ffi.a -headers swift/include \
     -library swift/libs/idevice-ios-sim.a -headers swift/include \
+    -library target/aarch64-apple-tvos/release/libidevice_ffi.a -headers swift/include \
+    -library swift/libs/idevice-tvos-sim.a -headers swift/include \
     -library swift/libs/idevice-macos.a -headers swift/include \
     -output swift/IDevice.xcframework
 
@@ -71,6 +74,15 @@ apple-build: # requires a Mac
   # iOS Simulator (arm64)
   BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk iphonesimulator --show-sdk-path)" \
     cargo build --release --target aarch64-apple-ios-sim
+
+  # tvOS device build
+  BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk appletvos --show-sdk-path)" \
+    TVOS_DEPLOYMENT_TARGET=15.0 \
+    cargo build --release --target aarch64-apple-tvos --features obfuscate
+
+  # tvOS Simulator (arm64)
+  BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk appletvsimulator --show-sdk-path)" \
+    cargo build --release --target aarch64-apple-tvos-sim
 
   # iOS Simulator (x86_64)
   # BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(xcrun --sdk iphonesimulator --show-sdk-path)" \
