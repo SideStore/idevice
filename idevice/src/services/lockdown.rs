@@ -248,26 +248,16 @@ impl LockdownClient {
             return Err(IdeviceError::NoEstablishedConnection);
         }
 
-        let legacy = match self.get_value(Some("ProductVersion"), None).await {
-            Ok(val) => val
-                .as_string()
-                .and_then(|x| x.split('.').next())
-                .and_then(|x| x.parse::<u8>().ok())
-                .map(|x| x < 5)
-                .unwrap_or(false),
-            Err(IdeviceError::Socket(err)) => {
-                return Err(IdeviceError::Socket(err));
-            }
-            Err(IdeviceError::NoEstablishedConnection) => {
-                return Err(IdeviceError::NoEstablishedConnection);
-            }
-            Err(err) => {
-                tracing::debug!(
-                    "Could not query ProductVersion before StartSession ({err:?}); proceeding with modern TLS"
-                );
-                false
-            }
-        };
+        let legacy = self
+            .get_value(Some("ProductVersion"), None)
+            .await
+            .ok()
+            .as_ref()
+            .and_then(|x| x.as_string())
+            .and_then(|x| x.split(".").next())
+            .and_then(|x| x.parse::<u8>().ok())
+            .map(|x| x < 5)
+            .unwrap_or(false);
 
         let request = crate::plist!({
             "Label": self.idevice.label.clone(),
