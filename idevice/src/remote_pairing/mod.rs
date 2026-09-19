@@ -114,7 +114,8 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
     where
         Fut: std::future::Future<Output = String>,
     {
-        self.connect_with_options(pairing_file, true, pin_callback).await
+        self.connect_with_options(pairing_file, true, pin_callback)
+            .await
     }
 
     pub async fn connect_with_options<Fut>(
