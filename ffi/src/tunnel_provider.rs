@@ -303,19 +303,26 @@ pub unsafe extern "C" fn tunnel_create_rppairing(
     out_adapter: *mut *mut AdapterHandle,
     out_handshake: *mut *mut RsdHandshakeHandle,
 ) -> *mut IdeviceFfiError {
-    tunnel_create_rppairing_with_options(
-        addr,
-        addr_len,
-        hostname,
-        pairing_file,
-        true,
-        pin_callback,
-        pin_context,
-        out_adapter,
-        out_handshake,
-    )
+    unsafe {
+        tunnel_create_rppairing_with_options(
+            addr,
+            addr_len,
+            hostname,
+            pairing_file,
+            true,
+            pin_callback,
+            pin_context,
+            out_adapter,
+            out_handshake,
+        )
+    }
 }
 
+/// Creates a tunnel over the network via raw RPPairing protocol, with optional pairing fallback.
+///
+/// # Safety
+/// All pointer arguments must be valid and non-null (except `pin_callback`/`pin_context`).
+/// `pairing_file` is borrowed, not consumed.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tunnel_create_rppairing_with_options(
     addr: *const idevice_sockaddr,
