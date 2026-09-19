@@ -114,16 +114,33 @@ impl<R: RpPairingSocketProvider> RemotePairingClient<R> {
     where
         Fut: std::future::Future<Output = String>,
     {
+        self.connect_with_options(pairing_file, true, pin_callback).await
+    }
+
+    pub async fn connect_with_options<Fut>(
+        &mut self,
+        pairing_file: &mut RpPairingFile,
+        pair_if_needed: bool,
+        pin_callback: impl Fn() -> Fut,
+    ) -> Result<(), IdeviceError>
+    where
+        Fut: std::future::Future<Output = String>,
+    {
         self.attempt_pair_verify().await?;
 
         if pairing_file.is_paired() {
-            if self.validate_pairing(pairing_file).await.is_err() {
-                self.pair(pairing_file, pin_callback).await?;
+            if let Err(e) = self.validate_pairing(pairing_file).await {
+                if !pair_if_needed {
+                    return Err(e);
+                }
+            } else {
+                return Ok(());
             }
-        } else {
-            self.pair(pairing_file, pin_callback).await?;
+        } else if !pair_if_needed {
+            return Err(RemotePairingError::PairVerifyFailed.into());
         }
-        Ok(())
+
+        self.pair(pairing_file, pin_callback).await
     }
 
     /// Returns peer device info captured during this client's successful `pair()` flow.

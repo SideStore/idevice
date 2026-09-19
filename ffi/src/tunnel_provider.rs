@@ -303,6 +303,31 @@ pub unsafe extern "C" fn tunnel_create_rppairing(
     out_adapter: *mut *mut AdapterHandle,
     out_handshake: *mut *mut RsdHandshakeHandle,
 ) -> *mut IdeviceFfiError {
+    tunnel_create_rppairing_with_options(
+        addr,
+        addr_len,
+        hostname,
+        pairing_file,
+        true,
+        pin_callback,
+        pin_context,
+        out_adapter,
+        out_handshake,
+    )
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tunnel_create_rppairing_with_options(
+    addr: *const idevice_sockaddr,
+    addr_len: idevice_socklen_t,
+    hostname: *const c_char,
+    pairing_file: *mut RpPairingFileHandle,
+    pair_if_needed: bool,
+    pin_callback: Option<extern "C" fn(context: *mut c_void) -> *const c_char>,
+    pin_context: *mut c_void,
+    out_adapter: *mut *mut AdapterHandle,
+    out_handshake: *mut *mut RsdHandshakeHandle,
+) -> *mut IdeviceFfiError {
     if addr.is_null()
         || hostname.is_null()
         || pairing_file.is_null()
@@ -331,7 +356,7 @@ pub unsafe extern "C" fn tunnel_create_rppairing(
         let conn = RpPairingSocket::new(stream);
 
         let mut rpc = RemotePairingClient::new(conn, &host);
-        rpc.connect(rpf, async || get_pin(pin_callback, &ctx))
+        rpc.connect_with_options(rpf, pair_if_needed, async || get_pin(pin_callback, &ctx))
             .await?;
 
         finish_tunnel(&mut rpc, socket_addr).await
